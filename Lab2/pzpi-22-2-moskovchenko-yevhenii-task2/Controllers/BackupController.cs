@@ -28,4 +28,32 @@ public class BackupController : ControllerBase
             return StatusCode(500, new { Error = message });
         }
     }
+     [HttpGet("list")]
+    public IActionResult ListBackups()
+    {
+        var backups = _backupService.GetAvailableBackups();
+        return Ok(backups);
+    }
+
+
+    // POST /api/Backup/restore
+    [HttpPost("restore")]
+    public async Task<IActionResult> RestoreBackup([FromQuery] string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+        {
+            return BadRequest("Backup file name must be provided.");
+        }
+
+        var (success, message) = await _backupService.RestoreBackupAsync(fileName);
+        if (success)
+        {
+            return Ok(new { Message = message });
+        }
+        else
+        {
+            // Повертаємо помилку сервера, якщо відновлення не вдалося
+            return StatusCode(500, new { Error = message });
+        }
+    }
 }
