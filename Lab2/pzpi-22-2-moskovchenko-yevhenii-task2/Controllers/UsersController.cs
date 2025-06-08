@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// --- UsersController.cs ---
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
+using System.Linq; 
+using System.Threading.Tasks;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -16,21 +18,21 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize]
-    public IActionResult GetAllUsers()
+    //[Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAllUsers()
     {
-        var users = _userService.GetAllUsers();
-        var userDtos = users.Select(user => _userMapper.MapToDto(user));
+        var users = await _userService.GetAllUsersAsync();
+        var userDtos = users.Select(u => _userMapper.MapToDto(u));
         return Ok(userDtos);
     }
 
     [HttpGet("{id}/working-days-report")]
     [Authorize(Roles = "Admin")]
-    public IActionResult GetUserWorkingDaysReport(int id)
+    public async Task<IActionResult> GetUserWorkingDaysReport(int id) // Змінено на async Task
     {
         try
         {
-            var report = _userService.GenerateUserWorkingDaysReport(id);
+            var report = await _userService.GenerateUserWorkingDaysReport(id); // Додано await
             return Ok(report);
         }
         catch (Exception ex)
@@ -41,9 +43,9 @@ public class UsersController : ControllerBase
 
     [HttpGet("{id}")]
     [Authorize]
-    public IActionResult GetUserById(int id)
+    public async Task<IActionResult> GetUserById(int id)
     {
-        var user = _userService.GetUserById(id);
+        var user = await _userService.GetUserByIdAsync(id);
         if (user == null)
         {
             return NotFound();
@@ -53,28 +55,34 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
-    public IActionResult AddUser(UserDto userDto)
+    //[Authorize(Roles = "Admin")]
+    public async Task<IActionResult> AddUser([FromBody] UserDto userDto)
     {
+        if (userDto == null)
+        {
+            return BadRequest("User data is null.");
+        }
+
         var user = _userMapper.MapToEntity(userDto);
-        _userService.AddUser(user);
-        return CreatedAtAction(nameof(GetUserById), new { id = user.UserId }, userDto);
+        await _userService.AddUserAsync(user);
+        var createdUserDto = _userMapper.MapToDto(user);
+        return CreatedAtAction(nameof(GetUserById), new { id = user.UserId }, createdUserDto);
     }
 
     [HttpPut("{id}")]
     [Authorize(Roles = "Admin")]
-    public IActionResult UpdateUser(int id, UserDto updatedUserDto)
+    public async Task<IActionResult> UpdateUser(int id, [FromBody] UserDto userDto)
     {
-        var updatedUser = _userMapper.MapToEntity(updatedUserDto);
-        _userService.UpdateUser(id, updatedUser);
+        var userToUpdate = _userMapper.MapToEntity(userDto);
+        await _userService.UpdateUserAsync(id, userToUpdate);
         return NoContent();
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
-    public IActionResult DeleteUser(int id)
+    //[Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeleteUser(int id)
     {
-        _userService.DeleteUser(id);
+        await _userService.DeleteUserAsync(id);
         return NoContent();
     }
 }

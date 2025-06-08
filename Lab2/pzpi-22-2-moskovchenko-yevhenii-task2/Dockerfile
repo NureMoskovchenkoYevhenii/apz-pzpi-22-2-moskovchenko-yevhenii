@@ -2,31 +2,33 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
-# Копіюємо файл проекту. Вказуємо точну назву файлу з лапками, щоб обробити пробіли.
-COPY "StaffFlow api.csproj" ./ 
-
-# Відновлюємо залежності для конкретного файлу проекту, вказуючи його явно
-RUN dotnet restore "StaffFlow api.csproj" 
-
-# Копіюємо весь вихідний код
+COPY StaffFlowApi.csproj ./ 
+RUN dotnet restore StaffFlowApi.csproj 
 COPY . .
-
-# Публікуємо додаток. Знову вказуємо точну назву файлу проекту.
-RUN dotnet publish "StaffFlow api.csproj" -c Release -o out
+RUN dotnet publish StaffFlowApi.csproj -c Release -o out
 
 # Використовуємо образ Runtime для запуску (менший за розміром)
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final 
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
+
+# Перемикаємось на користувача root, щоб встановити пакети та змінити дозволи
+USER root
+RUN apt-get update && apt-get install -y postgresql-client
+
+# --- НОВИЙ КРОК: Створюємо директорію для бекапів та надаємо права ---
+RUN mkdir /backups
+RUN chown app /backups
+# -------------------------------------------------------------------
+
+# Повертаємось до стандартного користувача 'app'
+USER app
 
 # Копіюємо опубліковані файли з етапу build
 COPY --from=build /app/out .
 
-# Важливо: налаштувати, щоб ASP.NET Core слухав на всіх інтерфейсах (0.0.0.0),
-# а не тільки на localhost, щоб бути доступним для Docker та зовнішніх запитів.
+# Налаштування для запуску в Docker
 ENV ASPNETCORE_URLS=http://+:80
-
-# Порт, який буде слухати контейнер. Це внутрішній порт контейнера.
 EXPOSE 80
 
 # Точка входу для запуску застосунку
-ENTRYPOINT ["dotnet", "StaffFlow api.dll"]
+ENTRYPOINT ["dotnet", "StaffFlowApi.dll"]

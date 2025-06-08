@@ -39,7 +39,8 @@ builder.Services.AddScoped<WorkingDayService>();
 builder.Services.AddScoped<UserWorkingDayService>();
 builder.Services.AddScoped<ChangeRequestService>();
 builder.Services.AddScoped<UserChangeRequestService>();
-builder.Services.AddScoped<SensorDataService>(); // Сервіс для даних сенсорів
+builder.Services.AddScoped<SensorDataService>(); 
+builder.Services.AddScoped<BackupService>(); 
 
 // Реєстрація маперів (Scoped lifetime)
 builder.Services.AddScoped<UserMapper>();

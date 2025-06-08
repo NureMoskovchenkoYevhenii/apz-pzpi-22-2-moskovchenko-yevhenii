@@ -1,53 +1,50 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using Microsoft.EntityFrameworkCore;
-using BCrypt.Net;
+﻿// --- UserService.cs ---
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Linq; // Додано для Where
+using System; // Додано для DateTime
 
 public class UserService
 {
     private readonly IUserRepository _userRepository;
-    private readonly IChangeRequestRepository _changeRequestRepository;
+    // ... інші репозиторії, якщо потрібні ...
 
-    public UserService(IUserRepository userRepository, IChangeRequestRepository changeRequestRepository)
+    public UserService(IUserRepository userRepository)
     {
         _userRepository = userRepository;
-        _changeRequestRepository = changeRequestRepository;
     }
 
     public async Task<User> Authenticate(string username, string password)
     {
-        // 1. Отримуємо користувача з репозиторію
         var user = await _userRepository.FindByUsernameAsync(username);
 
-        // 2. Виконуємо бізнес-логіку перевірки пароля
         if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
         {
-            return null; // Автентифікація не пройшла
+            return null;
         }
 
-        // Автентифікація успішна, повертаємо об'єкт користувача
         return user;
     }
     
-    public void AddUser(User user)
+    // Всі методи тепер асинхронні і мають суфікс Async
+    public async Task AddUserAsync(User user)
     {
-        user.PasswordHash = HashPassword(user.PasswordHash);
-        _userRepository.Add(user);
+        await _userRepository.AddAsync(user);
     }
 
-    public IEnumerable<User> GetAllUsers()
+    public async Task<IEnumerable<User>> GetAllUsersAsync()
     {
-        return _userRepository.GetAll();
+        return await _userRepository.GetAllAsync();
     }
 
-    public User GetUserById(int userId)
+    public async Task<User> GetUserByIdAsync(int userId)
     {
-        return _userRepository.GetById(userId);
+        return await _userRepository.GetByIdAsync(userId);
     }
 
-    public void UpdateUser(int userId, User updatedUser)
+    public async Task UpdateUserAsync(int userId, User updatedUser)
     {
-        var user = _userRepository.GetById(userId);
+        var user = await _userRepository.GetByIdAsync(userId);
         if (user != null)
         {
             user.FirstName = updatedUser.FirstName;
@@ -60,13 +57,13 @@ public class UserService
                 user.PasswordHash = HashPassword(updatedUser.PasswordHash);
             }
 
-            _userRepository.Update(user);
+            await _userRepository.UpdateAsync(user);
         }
     }
 
-    public void DeleteUser(int userId)
+     public async Task DeleteUserAsync(int userId)
     {
-        _userRepository.Delete(userId);
+        await _userRepository.DeleteAsync(userId);
     }
 
     private string HashPassword(string password)
@@ -74,9 +71,10 @@ public class UserService
         return BCrypt.Net.BCrypt.HashPassword(password);
     }
 
-    public string GenerateUserWorkingDaysReport(int userId)
+    // Метод для звіту теж може бути асинхронним
+    public async Task<string> GenerateUserWorkingDaysReport(int userId)
     {
-        var user = _userRepository.GetById(userId);
+        var user = await _userRepository.GetByIdAsync(userId); // Використовуємо асинхронний GetByIdAsync
         if (user == null)
         {
             throw new Exception("User not found");
@@ -84,7 +82,6 @@ public class UserService
 
         var report = $"Report for {user.FirstName} {user.LastName}\n";
 
-        // Ensure UserWorkingDays is not null
         var lastWeekWorkingDays = user.UserWorkingDays?
             .Where(uwd => uwd.WorkingDay.StartTime >= DateTime.Now.AddDays(-7))
             .ToList() ?? new List<UserWorkingDay>();
@@ -101,7 +98,6 @@ public class UserService
         }
         report += $"Total Hours in Last 7 Days: {totalHours}\n";
 
-        // Ensure UserChangeRequests is not null
         var userChangeRequests = user.UserChangeRequests ?? new List<UserChangeRequest>();
         report += "Change Requests:\n";
         foreach (var userChangeRequest in userChangeRequests)
@@ -114,7 +110,4 @@ public class UserService
 
         return report;
     }
-
-
-
 }

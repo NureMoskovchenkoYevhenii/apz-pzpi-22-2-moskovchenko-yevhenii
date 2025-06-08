@@ -11,6 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+       - backup_data:/backups
 
   backend:
     build:
@@ -24,6 +25,9 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
     depends_on:
       - db
+    volumes:
+      - backup_data:/backups 
 
 volumes:
   db_data:
+  backup_data: 
