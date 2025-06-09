@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Localization; 
 
 [ApiController]
 [Route("api/[controller]")]
@@ -8,27 +9,32 @@ using System.Threading.Tasks;
 public class BackupController : ControllerBase
 {
     private readonly BackupService _backupService;
+    private readonly IStringLocalizer<SharedResources> _localizer; // 1. Оголошуємо поле
 
-    public BackupController(BackupService backupService)
+    public BackupController(
+        BackupService backupService,
+        IStringLocalizer<SharedResources> localizer) // Впроваджуємо залежність
     {
         _backupService = backupService;
+        _localizer = localizer; // 2. Ініціалізуємо поле в конструкторі
     }
 
     [HttpPost("create")]
     public async Task<IActionResult> CreateBackup()
     {
-        var (success, message) = await _backupService.CreateBackupAsync();
+        var (success, backupFileName) = await _backupService.CreateBackupAsync();
         if (success)
         {
-            return Ok(new { Message = message });
+            // Тепер _localizer існує і може бути використаний
+            return Ok(new { Message = _localizer["BackupCreated"].Value, BackupFile = backupFileName });
         }
         else
         {
-            // Повертаємо помилку сервера, якщо бекап не вдався
-            return StatusCode(500, new { Error = message });
+            return StatusCode(500, new { Error = backupFileName });
         }
     }
-     [HttpGet("list")]
+
+    [HttpGet("list")]
     public IActionResult ListBackups()
     {
         var backups = _backupService.GetAvailableBackups();

@@ -1,76 +1,75 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize] // Застосовуємо авторизацію до всього контролера
 public class SensorDataController : ControllerBase
 {
     private readonly SensorDataService _sensorDataService;
     private readonly SensorDataMapper _sensorDataMapper;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
-    public SensorDataController(SensorDataService sensorDataService, SensorDataMapper sensorDataMapper)
+    public SensorDataController(SensorDataService sensorDataService, SensorDataMapper sensorDataMapper, IStringLocalizer<SharedResources> localizer)
     {
         _sensorDataService = sensorDataService;
         _sensorDataMapper = sensorDataMapper;
+        _localizer = localizer;
     }
 
     [HttpGet]
-    [Authorize]
-    public IActionResult GetAllSensorData()
+    public async Task<IActionResult> GetAllSensorData()
     {
-        var sensorData = _sensorDataService.GetAllSensorData();
+        var sensorData = await _sensorDataService.GetAllSensorDataAsync();
         var sensorDataDtos = sensorData.Select(data => _sensorDataMapper.MapToDto(data));
         return Ok(sensorDataDtos);
     }
 
     [HttpGet("{id}")]
-    [Authorize]
-    public IActionResult GetSensorDataById(int id)
+    public async Task<IActionResult> GetSensorDataById(int id)
     {
-        var sensorData = _sensorDataService.GetSensorDataById(id);
+        var sensorData = await _sensorDataService.GetSensorDataByIdAsync(id);
         if (sensorData == null)
         {
-            return NotFound();
+            // Повертаємо локалізовану помилку
+            return NotFound(_localizer["SensorDataNotFound", id].Value);
         }
         var sensorDataDto = _sensorDataMapper.MapToDto(sensorData);
         return Ok(sensorDataDto);
     }
-
    
     [HttpPost]
-    [Authorize]
     public async Task<IActionResult> AddSensorData([FromBody] SensorDataDto sensorDataDto)
     {
         if (sensorDataDto == null)
         {
-            return BadRequest("Дані відсутні!");
+            return BadRequest(_localizer["InvalidData"].Value);
         }
 
         var sensorData = _sensorDataMapper.MapToEntity(sensorDataDto);
-        _sensorDataService.AddSensorData(sensorData);
+        await _sensorDataService.AddSensorDataAsync(sensorData);
         sensorDataDto = _sensorDataMapper.MapToDto(sensorData);
 
         return CreatedAtAction(nameof(GetSensorDataById), new { id = sensorData.Id }, sensorDataDto);
     }
 
-
-
     [HttpPut("{id}")]
-    [Authorize]
-    public IActionResult UpdateSensorData(int id, SensorDataDto updatedSensorDataDto)
+    public async Task<IActionResult> UpdateSensorData(int id, [FromBody] SensorDataDto updatedSensorDataDto)
     {
+        if (updatedSensorDataDto == null)
+        {
+            return BadRequest(_localizer["InvalidData"].Value);
+        }
         var updatedSensorData = _sensorDataMapper.MapToEntity(updatedSensorDataDto);
-        _sensorDataService.UpdateSensorData(id, updatedSensorData);
+        await _sensorDataService.UpdateSensorDataAsync(id, updatedSensorData);
         return NoContent();
     }
-
 
     [HttpDelete("{id}")]
-    [Authorize]
-    public IActionResult DeleteSensorData(int id)
+    public async Task<IActionResult> DeleteSensorData(int id)
     {
-        _sensorDataService.DeleteSensorData(id);
+        await _sensorDataService.DeleteSensorDataAsync(id);
         return NoContent();
     }
-
 }

@@ -39,8 +39,9 @@ builder.Services.AddScoped<WorkingDayService>();
 builder.Services.AddScoped<UserWorkingDayService>();
 builder.Services.AddScoped<ChangeRequestService>();
 builder.Services.AddScoped<UserChangeRequestService>();
-builder.Services.AddScoped<SensorDataService>(); 
+builder.Services.AddScoped<SensorDataService>();
 builder.Services.AddScoped<BackupService>(); 
+builder.Services.AddLocalization(); 
 
 // Реєстрація маперів (Scoped lifetime)
 builder.Services.AddScoped<UserMapper>();
@@ -86,6 +87,16 @@ builder.Services.AddSwaggerGen(c =>
 // --- Налаштування конвеєра HTTP-запитів (Middleware Pipeline) ---
 
 var app = builder.Build();
+
+// --- НОВИЙ БЛОК: Налаштування локалізації ---
+var supportedCultures = new[] { "en", "uk" };
+var localizationOptions = new RequestLocalizationOptions()
+    .SetDefaultCulture(supportedCultures[0]) // Англійська за замовчуванням
+    .AddSupportedCultures(supportedCultures)
+    .AddSupportedUICultures(supportedCultures);
+
+app.UseRequestLocalization(localizationOptions);
+// ------------------------------------------
 
 // Налаштування HTTP-запитів залежно від середовища
 if (app.Environment.IsDevelopment())

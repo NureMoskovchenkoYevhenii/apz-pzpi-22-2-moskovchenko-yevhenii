@@ -1,12 +1,14 @@
-﻿public interface ISensorDataRepository
-{
-    void Add(SensorData sensorData);
-    IEnumerable<SensorData> GetAll();
-    SensorData GetById(int id);
-    void Update(SensorData sensorData);
-    void Delete(int id);
-    SensorData GetLastSensorData(); 
+﻿using Microsoft.Extensions.Localization;
+using Microsoft.EntityFrameworkCore;
 
+public interface ISensorDataRepository
+{
+    Task AddAsync(SensorData sensorData);
+    Task<IEnumerable<SensorData>> GetAllAsync();
+    Task<SensorData> GetByIdAsync(int id);
+    Task UpdateAsync(SensorData sensorData);
+    Task DeleteAsync(int id);
+    Task<SensorData> GetLastSensorDataAsync();
 }
 
 public class SensorDataRepository : ISensorDataRepository
@@ -18,48 +20,40 @@ public class SensorDataRepository : ISensorDataRepository
         _context = context;
     }
 
-    public void Add(SensorData sensorData)
+    public async Task AddAsync(SensorData sensorData)
     {
-        _context.SensorData.Add(sensorData);
-        _context.SaveChanges();
+        await _context.SensorData.AddAsync(sensorData);
+        await _context.SaveChangesAsync();
     }
 
-    public IEnumerable<SensorData> GetAll()
+    public async Task<IEnumerable<SensorData>> GetAllAsync()
     {
-        return _context.SensorData.ToList();
+        return await _context.SensorData.ToListAsync();
     }
 
-    public SensorData GetById(int id)
+    public async Task<SensorData> GetByIdAsync(int id)
     {
-        return _context.SensorData.Find(id);
+        return await _context.SensorData.FindAsync(id);
     }
 
-    public void Update(SensorData sensorData)
+    public async Task UpdateAsync(SensorData sensorData)
     {
-        var existingSensorData = _context.SensorData.Find(sensorData.Id);
-        if (existingSensorData != null)
-        {
-            existingSensorData.Timestamp = sensorData.Timestamp;
-            existingSensorData.Temperature = sensorData.Temperature;
-            existingSensorData.Humidity = sensorData.Humidity;
-            existingSensorData.IsTemperatureAdjustmentEnabled = sensorData.IsTemperatureAdjustmentEnabled;
-            existingSensorData.IsHumidityAdjustmentEnabled = sensorData.IsHumidityAdjustmentEnabled;
-            _context.SaveChanges();
-        }
+        _context.SensorData.Update(sensorData);
+        await _context.SaveChangesAsync();
     }
 
-    public void Delete(int id)
+    public async Task DeleteAsync(int id)
     {
-        var sensorData = _context.SensorData.Find(id);
+        var sensorData = await _context.SensorData.FindAsync(id);
         if (sensorData != null)
         {
             _context.SensorData.Remove(sensorData);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
         }
     }
 
-    public SensorData GetLastSensorData()
+    public async Task<SensorData> GetLastSensorDataAsync()
     {
-        return _context.SensorData.OrderByDescending(s => s.Timestamp).FirstOrDefault();
+        return await _context.SensorData.OrderByDescending(s => s.Timestamp).FirstOrDefaultAsync();
     }
 }

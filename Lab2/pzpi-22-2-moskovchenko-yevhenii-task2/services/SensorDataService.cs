@@ -1,56 +1,60 @@
-﻿public class SensorDataService
+﻿using Microsoft.Extensions.Localization;
+
+public class SensorDataService
 {
     private readonly ISensorDataRepository _sensorDataRepository;
+    private readonly IStringLocalizer<SharedResources> _localizer;
     private const decimal MinTemperature = 3m;
     private const decimal MaxTemperature = 5m;
     private const decimal MinHumidity = 85m;
     private const decimal MaxHumidity = 95m;
 
-    public SensorDataService(ISensorDataRepository sensorDataRepository)
+    public SensorDataService(ISensorDataRepository sensorDataRepository, IStringLocalizer<SharedResources> localizer)
     {
         _sensorDataRepository = sensorDataRepository;
+        _localizer = localizer;
     }
 
-    public void AddSensorData(SensorData sensorData)
+    public async Task AddSensorDataAsync(SensorData sensorData)
     {
         SimulateAdjustmentActivation(sensorData, MinTemperature, MaxTemperature, MinHumidity, MaxHumidity);
-        _sensorDataRepository.Add(sensorData);
+        await _sensorDataRepository.AddAsync(sensorData);
     }
 
     public void SimulateAdjustmentActivation(SensorData sensorData, decimal minTemp, decimal maxTemp, decimal minHumidity, decimal maxHumidity)
     {
         bool isTemperatureAdjustmentNeeded = sensorData.Temperature < minTemp || sensorData.Temperature > maxTemp;
         bool isHumidityAdjustmentNeeded = sensorData.Humidity < minHumidity || sensorData.Humidity > maxHumidity;
-
         sensorData.IsTemperatureAdjustmentEnabled = isTemperatureAdjustmentNeeded;
         sensorData.IsHumidityAdjustmentEnabled = isHumidityAdjustmentNeeded;
     }
-    public IEnumerable<SensorData> GetAllSensorData()
+
+    public async Task<IEnumerable<SensorData>> GetAllSensorDataAsync()
     {
-        return _sensorDataRepository.GetAll();
+        return await _sensorDataRepository.GetAllAsync();
     }
 
-    public SensorData GetSensorDataById(int id)
+    public async Task<SensorData> GetSensorDataByIdAsync(int id)
     {
-        return _sensorDataRepository.GetById(id);
+        return await _sensorDataRepository.GetByIdAsync(id);
     }
 
-    public void UpdateSensorData(int id, SensorData updatedSensorData)
+    public async Task UpdateSensorDataAsync(int id, SensorData updatedSensorData)
     {
-        var sensorData = _sensorDataRepository.GetById(id);
+        var sensorData = await _sensorDataRepository.GetByIdAsync(id);
         if (sensorData != null)
         {
             sensorData.Timestamp = updatedSensorData.Timestamp;
             sensorData.Temperature = updatedSensorData.Temperature;
             sensorData.Humidity = updatedSensorData.Humidity;
-            _sensorDataRepository.Update(sensorData);
+            // Логіку SimulateAdjustmentActivation можна застосувати і при оновленні
+            SimulateAdjustmentActivation(sensorData, MinTemperature, MaxTemperature, MinHumidity, MaxHumidity);
+            await _sensorDataRepository.UpdateAsync(sensorData);
         }
     }
 
-   
-
-    public void DeleteSensorData(int id)
+    public async Task DeleteSensorDataAsync(int id)
     {
-        _sensorDataRepository.Delete(id);
+        await _sensorDataRepository.DeleteAsync(id);
     }
 }

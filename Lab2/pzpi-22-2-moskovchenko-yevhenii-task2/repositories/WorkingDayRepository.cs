@@ -2,12 +2,14 @@
 
 public interface IWorkingDayRepository
 {
-    void Add(WorkingDay workingDay); // Зміна типу параметра на WorkingDay
-    IEnumerable<WorkingDay> GetAll();
-    WorkingDay GetById(int workingDayId);
-    void Update(WorkingDay workingDay);
-    void Delete(int workingDayId);
+    Task<WorkingDay> AddAsync(WorkingDay workingDay);
+    Task<IEnumerable<WorkingDay>> GetAllAsync();
+    Task<WorkingDay> GetByIdAsync(int workingDayId);
+    Task UpdateAsync(WorkingDay workingDay);
+    Task DeleteAsync(int workingDayId);
 }
+
+
 public class WorkingDayRepository : IWorkingDayRepository
 {
     private readonly ApplicationDbContext _context;
@@ -17,35 +19,36 @@ public class WorkingDayRepository : IWorkingDayRepository
         _context = context;
     }
 
-    public void Add(WorkingDay workingDay) 
+    public async Task<WorkingDay> AddAsync(WorkingDay workingDay)
     {
-        _context.WorkingDays.Add(workingDay);
-        _context.SaveChanges();
+        await _context.WorkingDays.AddAsync(workingDay);
+        await _context.SaveChangesAsync();
+        return workingDay;
     }
 
-    public IEnumerable<WorkingDay> GetAll()
+    public async Task<IEnumerable<WorkingDay>> GetAllAsync()
     {
-        return _context.WorkingDays.Include(wd => wd.DayType).ToList();
+        return await _context.WorkingDays.Include(wd => wd.DayType).ToListAsync();
     }
 
-    public WorkingDay GetById(int workingDayId)
+    public async Task<WorkingDay> GetByIdAsync(int workingDayId)
     {
-        return _context.WorkingDays.Include(wd => wd.DayType).FirstOrDefault(wd => wd.WorkingDayId == workingDayId);
+        return await _context.WorkingDays.Include(wd => wd.DayType).FirstOrDefaultAsync(wd => wd.WorkingDayId == workingDayId);
     }
 
-    public void Update(WorkingDay workingDay)
+    public async Task UpdateAsync(WorkingDay workingDay)
     {
         _context.WorkingDays.Update(workingDay);
-        _context.SaveChanges();
+        await _context.SaveChangesAsync();
     }
 
-    public void Delete(int workingDayId)
+    public async Task DeleteAsync(int workingDayId)
     {
-        var workingDay = _context.WorkingDays.Find(workingDayId);
+        var workingDay = await _context.WorkingDays.FindAsync(workingDayId);
         if (workingDay != null)
         {
             _context.WorkingDays.Remove(workingDay);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
         }
     }
 }

@@ -1,67 +1,74 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
+using System.Threading.Tasks;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ChangeRequestsController : ControllerBase
 {
     private readonly ChangeRequestService _changeRequestService;
     private readonly ChangeRequestMapper _changeRequestMapper;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
-    public ChangeRequestsController(ChangeRequestService changeRequestService, ChangeRequestMapper changeRequestMapper)
+    public ChangeRequestsController(ChangeRequestService changeRequestService, ChangeRequestMapper changeRequestMapper, IStringLocalizer<SharedResources> localizer)
     {
         _changeRequestService = changeRequestService;
         _changeRequestMapper = changeRequestMapper;
+        _localizer = localizer;
     }
 
     [HttpGet]
-    [Authorize]
-    public IActionResult GetAllChangeRequests()
+    public async Task<IActionResult> GetAllChangeRequests()
     {
-        var changeRequests = _changeRequestService.GetAllChangeRequests();
+        var changeRequests = await _changeRequestService.GetAllChangeRequestsAsync();
         var changeRequestDtos = changeRequests.Select(cr => _changeRequestMapper.MapToDto(cr));
         return Ok(changeRequestDtos);
     }
 
     [HttpGet("{id}")]
-    [Authorize]
-    public IActionResult GetChangeRequestById(int id)
+    public async Task<IActionResult> GetChangeRequestById(int id)
     {
-        var changeRequest = _changeRequestService.GetChangeRequestById(id);
+        var changeRequest = await _changeRequestService.GetChangeRequestByIdAsync(id);
         if (changeRequest == null)
         {
-            return NotFound();
+            return NotFound(_localizer["ChangeRequestNotFound", id].Value);
         }
         var changeRequestDto = _changeRequestMapper.MapToDto(changeRequest);
         return Ok(changeRequestDto);
     }
 
     [HttpPost]
-    [Authorize]
-    public IActionResult AddChangeRequest(ChangeRequestDto changeRequestDto)
+    public async Task<IActionResult> AddChangeRequest([FromBody] ChangeRequestDto changeRequestDto)
     {
+        if (changeRequestDto == null)
+        {
+            return BadRequest(_localizer["InvalidData"].Value);
+        }
         var changeRequest = _changeRequestMapper.MapToEntity(changeRequestDto);
-        _changeRequestService.AddChangeRequest(changeRequest, changeRequestDto.UserId);
+        await _changeRequestService.AddChangeRequestAsync(changeRequest, changeRequestDto.UserId);
         return CreatedAtAction(nameof(GetChangeRequestById), new { id = changeRequest.ChangeRequestId }, changeRequestDto);
     }
 
-
-
-
     [HttpPut("{id}")]
     [Authorize(Roles = "Admin")]
-    public IActionResult UpdateChangeRequest(int id, ChangeRequestDto updatedChangeRequestDto)
+    public async Task<IActionResult> UpdateChangeRequest(int id, [FromBody] ChangeRequestDto updatedChangeRequestDto)
     {
+        if (updatedChangeRequestDto == null)
+        {
+            return BadRequest(_localizer["InvalidData"].Value);
+        }
         var updatedChangeRequest = _changeRequestMapper.MapToEntity(updatedChangeRequestDto);
-        _changeRequestService.UpdateChangeRequest(id, updatedChangeRequest);
+        await _changeRequestService.UpdateChangeRequestAsync(id, updatedChangeRequest);
         return NoContent();
     }
 
     [HttpDelete("{id}")]
     [Authorize(Roles = "Admin")]
-    public IActionResult DeleteChangeRequest(int id)
+    public async Task<IActionResult> DeleteChangeRequest(int id)
     {
-        _changeRequestService.DeleteChangeRequest(id);
+        await _changeRequestService.DeleteChangeRequestAsync(id);
         return NoContent();
     }
 }

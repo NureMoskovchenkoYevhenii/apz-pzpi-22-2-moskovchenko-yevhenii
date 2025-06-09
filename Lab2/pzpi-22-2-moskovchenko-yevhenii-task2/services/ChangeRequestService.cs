@@ -1,55 +1,58 @@
-﻿public class ChangeRequestService
+﻿using Microsoft.Extensions.Localization;
+
+public class ChangeRequestService
 {
     private readonly IChangeRequestRepository _changeRequestRepository;
     private readonly IUserChangeRequestRepository _userChangeRequestRepository;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
-    public ChangeRequestService(IChangeRequestRepository changeRequestRepository, IUserChangeRequestRepository userChangeRequestRepository)
+    public ChangeRequestService(
+        IChangeRequestRepository changeRequestRepository,
+        IUserChangeRequestRepository userChangeRequestRepository,
+        IStringLocalizer<SharedResources> localizer)
     {
         _changeRequestRepository = changeRequestRepository;
         _userChangeRequestRepository = userChangeRequestRepository;
+        _localizer = localizer;
     }
 
-    public void AddChangeRequest(ChangeRequest changeRequest, int userId)
+    public async Task<ChangeRequest> AddChangeRequestAsync(ChangeRequest changeRequest, int userId)
     {
-        _changeRequestRepository.Add(changeRequest);
+        var createdRequest = await _changeRequestRepository.AddAsync(changeRequest);
 
         var userChangeRequest = new UserChangeRequest
         {
             UserId = userId,
-            ChangeRequestId = changeRequest.ChangeRequestId
+            ChangeRequestId = createdRequest.ChangeRequestId
         };
 
-        _userChangeRequestRepository.Add(userChangeRequest);
+        await _userChangeRequestRepository.AddAsync(userChangeRequest);
+        return createdRequest;
     }
 
-
-    public IEnumerable<ChangeRequest> GetAllChangeRequests()
+    public async Task<IEnumerable<ChangeRequest>> GetAllChangeRequestsAsync()
     {
-        return _changeRequestRepository.GetAll();
+        return await _changeRequestRepository.GetAllAsync();
     }
 
-    public ChangeRequest GetChangeRequestById(int changeRequestId)
+    public async Task<ChangeRequest> GetChangeRequestByIdAsync(int changeRequestId)
     {
-        return _changeRequestRepository.GetById(changeRequestId);
+        return await _changeRequestRepository.GetByIdAsync(changeRequestId);
     }
 
-    public void UpdateChangeRequest(int changeRequestId, ChangeRequest updatedChangeRequest)
+    public async Task UpdateChangeRequestAsync(int changeRequestId, ChangeRequest updatedChangeRequest)
     {
-        var changeRequest = _changeRequestRepository.GetById(changeRequestId);
+        var changeRequest = await _changeRequestRepository.GetByIdAsync(changeRequestId);
         if (changeRequest != null)
         {
-            changeRequest.RequestDate = DateTime.SpecifyKind(updatedChangeRequest.RequestDate, DateTimeKind.Utc);
             changeRequest.Status = updatedChangeRequest.Status;
-            changeRequest.DayTypeId = updatedChangeRequest.DayTypeId;
-            changeRequest.StartDate = DateTime.SpecifyKind(updatedChangeRequest.StartDate, DateTimeKind.Utc);
-            changeRequest.EndDate = DateTime.SpecifyKind(updatedChangeRequest.EndDate, DateTimeKind.Utc);
-            _changeRequestRepository.Update(changeRequest);
+            // ... інші поля для оновлення ...
+            await _changeRequestRepository.UpdateAsync(changeRequest);
         }
     }
 
-
-    public void DeleteChangeRequest(int changeRequestId)
+    public async Task DeleteChangeRequestAsync(int changeRequestId)
     {
-        _changeRequestRepository.Delete(changeRequestId);
+        await _changeRequestRepository.DeleteAsync(changeRequestId);
     }
 }

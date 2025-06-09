@@ -1,53 +1,59 @@
-﻿public class WorkingDayService
+﻿using Microsoft.Extensions.Localization;
+
+public class WorkingDayService
 {
     private readonly IWorkingDayRepository _workingDayRepository;
     private readonly IUserWorkingDayRepository _userWorkingDayRepository;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
-    public WorkingDayService(IWorkingDayRepository workingDayRepository, IUserWorkingDayRepository userWorkingDayRepository)
+    public WorkingDayService(
+        IWorkingDayRepository workingDayRepository,
+        IUserWorkingDayRepository userWorkingDayRepository,
+        IStringLocalizer<SharedResources> localizer)
     {
         _workingDayRepository = workingDayRepository;
         _userWorkingDayRepository = userWorkingDayRepository;
+        _localizer = localizer;
     }
 
-    public void AddWorkingDay(WorkingDay workingDay, int userId)
+    public async Task<WorkingDay> AddWorkingDayAsync(WorkingDay workingDay, int userId)
     {
-        _workingDayRepository.Add(workingDay);
+        var createdWorkingDay = await _workingDayRepository.AddAsync(workingDay);
 
         var userWorkingDay = new UserWorkingDay
         {
             UserId = userId,
-            WorkingDayId = workingDay.WorkingDayId
+            WorkingDayId = createdWorkingDay.WorkingDayId
         };
 
-        _userWorkingDayRepository.Add(userWorkingDay);
+        await _userWorkingDayRepository.AddAsync(userWorkingDay);
+        return createdWorkingDay;
     }
 
-
-
-    public IEnumerable<WorkingDay> GetAllWorkingDays()
+    public async Task<IEnumerable<WorkingDay>> GetAllWorkingDaysAsync()
     {
-        return _workingDayRepository.GetAll();
+        return await _workingDayRepository.GetAllAsync();
     }
 
-    public WorkingDay GetWorkingDayById(int workingDayId)
+    public async Task<WorkingDay> GetWorkingDayByIdAsync(int workingDayId)
     {
-        return _workingDayRepository.GetById(workingDayId);
+        return await _workingDayRepository.GetByIdAsync(workingDayId);
     }
 
-    public void UpdateWorkingDay(int workingDayId, WorkingDay updatedWorkingDay)
+    public async Task UpdateWorkingDayAsync(int workingDayId, WorkingDay updatedWorkingDay)
     {
-        var workingDay = _workingDayRepository.GetById(workingDayId);
+        var workingDay = await _workingDayRepository.GetByIdAsync(workingDayId);
         if (workingDay != null)
         {
             workingDay.StartTime = updatedWorkingDay.StartTime;
             workingDay.EndTime = updatedWorkingDay.EndTime;
             workingDay.DayTypeId = updatedWorkingDay.DayTypeId;
-            _workingDayRepository.Update(workingDay);
+            await _workingDayRepository.UpdateAsync(workingDay);
         }
     }
 
-    public void DeleteWorkingDay(int workingDayId)
+    public async Task DeleteWorkingDayAsync(int workingDayId)
     {
-        _workingDayRepository.Delete(workingDayId);
+        await _workingDayRepository.DeleteAsync(workingDayId);
     }
 }

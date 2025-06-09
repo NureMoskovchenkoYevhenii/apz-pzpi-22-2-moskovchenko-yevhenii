@@ -3,15 +3,17 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq; // Додано для Where
 using System; // Додано для DateTime
+using Microsoft.Extensions.Localization;
 
 public class UserService
 {
     private readonly IUserRepository _userRepository;
-    // ... інші репозиторії, якщо потрібні ...
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
-    public UserService(IUserRepository userRepository)
+    public UserService(IUserRepository userRepository, IStringLocalizer<SharedResources> localizer)
     {
         _userRepository = userRepository;
+        _localizer = localizer;
     }
 
     public async Task<User> Authenticate(string username, string password)
@@ -74,10 +76,10 @@ public class UserService
     // Метод для звіту теж може бути асинхронним
     public async Task<string> GenerateUserWorkingDaysReport(int userId)
     {
-        var user = await _userRepository.GetByIdAsync(userId); // Використовуємо асинхронний GetByIdAsync
+        var user = await _userRepository.GetByIdAsync(userId);
         if (user == null)
         {
-            throw new Exception("User not found");
+            throw new Exception(_localizer["UserNotFound"]);
         }
 
         var report = $"Report for {user.FirstName} {user.LastName}\n";

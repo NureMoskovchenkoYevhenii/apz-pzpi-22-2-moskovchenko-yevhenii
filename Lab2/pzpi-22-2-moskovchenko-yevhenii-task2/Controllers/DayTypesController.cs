@@ -1,36 +1,38 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class DayTypesController : ControllerBase
 {
     private readonly DayTypeService _dayTypeService;
     private readonly DayTypeMapper _dayTypeMapper;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
-    public DayTypesController(DayTypeService dayTypeService, DayTypeMapper dayTypeMapper)
+    public DayTypesController(DayTypeService dayTypeService, DayTypeMapper dayTypeMapper, IStringLocalizer<SharedResources> localizer)
     {
         _dayTypeService = dayTypeService;
         _dayTypeMapper = dayTypeMapper;
+        _localizer = localizer;
     }
 
     [HttpGet]
-    [Authorize]
-    public IActionResult GetAllDayTypes()
+    public async Task<IActionResult> GetAllDayTypes()
     {
-        var dayTypes = _dayTypeService.GetAllDayTypes();
+        var dayTypes = await _dayTypeService.GetAllDayTypesAsync();
         var dayTypeDtos = dayTypes.Select(dayType => _dayTypeMapper.MapToDto(dayType));
         return Ok(dayTypeDtos);
     }
 
     [HttpGet("{id}")]
-    [Authorize]
-    public IActionResult GetDayTypeById(int id)
+    public async Task<IActionResult> GetDayTypeById(int id)
     {
-        var dayType = _dayTypeService.GetDayTypeById(id);
+        var dayType = await _dayTypeService.GetDayTypeByIdAsync(id);
         if (dayType == null)
         {
-            return NotFound();
+            return NotFound(_localizer["DayTypeNotFound", id].Value);
         }
         var dayTypeDto = _dayTypeMapper.MapToDto(dayType);
         return Ok(dayTypeDto);
@@ -38,27 +40,32 @@ public class DayTypesController : ControllerBase
 
     [HttpPost]
     [Authorize(Roles = "Admin")]
-    public IActionResult AddDayType(DayTypeDto dayTypeDto)
+    public async Task<IActionResult> AddDayType([FromBody] DayTypeDto dayTypeDto)
     {
+        if (dayTypeDto == null)
+        {
+            return BadRequest(_localizer["InvalidData"].Value);
+        }
         var dayType = _dayTypeMapper.MapToEntity(dayTypeDto);
-        _dayTypeService.AddDayType(dayType);
-        return CreatedAtAction(nameof(GetDayTypeById), new { id = dayType.DayTypeId }, dayTypeDto);
+        var createdDayType = await _dayTypeService.AddDayTypeAsync(dayType);
+        var createdDto = _dayTypeMapper.MapToDto(createdDayType);
+        return CreatedAtAction(nameof(GetDayTypeById), new { id = createdDayType.DayTypeId }, createdDto);
     }
 
     [HttpPut("{id}")]
     [Authorize(Roles = "Admin")]
-    public IActionResult UpdateDayType(int id, DayTypeDto updatedDayTypeDto)
+    public async Task<IActionResult> UpdateDayType(int id, [FromBody] DayTypeDto updatedDayTypeDto)
     {
         var updatedDayType = _dayTypeMapper.MapToEntity(updatedDayTypeDto);
-        _dayTypeService.UpdateDayType(id, updatedDayType);
+        await _dayTypeService.UpdateDayTypeAsync(id, updatedDayType);
         return NoContent();
     }
 
     [HttpDelete("{id}")]
     [Authorize(Roles = "Admin")]
-    public IActionResult DeleteDayType(int id)
+    public async Task<IActionResult> DeleteDayType(int id)
     {
-        _dayTypeService.DeleteDayType(id);
+        await _dayTypeService.DeleteDayTypeAsync(id);
         return NoContent();
     }
 }

@@ -1,64 +1,68 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class UserChangeRequestsController : ControllerBase
 {
     private readonly UserChangeRequestService _userChangeRequestService;
     private readonly UserChangeRequestMapper _userChangeRequestMapper;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
-    public UserChangeRequestsController(UserChangeRequestService userChangeRequestService, UserChangeRequestMapper userChangeRequestMapper)
+    public UserChangeRequestsController(UserChangeRequestService userChangeRequestService, UserChangeRequestMapper userChangeRequestMapper, IStringLocalizer<SharedResources> localizer)
     {
         _userChangeRequestService = userChangeRequestService;
         _userChangeRequestMapper = userChangeRequestMapper;
+        _localizer = localizer;
     }
 
     [HttpGet]
-    [Authorize]
-    public IActionResult GetAllUserChangeRequests()
+    public async Task<IActionResult> GetAllUserChangeRequests()
     {
-        var userChangeRequests = _userChangeRequestService.GetAllUserChangeRequests();
+        var userChangeRequests = await _userChangeRequestService.GetAllUserChangeRequestsAsync();
         var userChangeRequestDtos = userChangeRequests.Select(ucr => _userChangeRequestMapper.MapToDto(ucr));
         return Ok(userChangeRequestDtos);
     }
 
     [HttpGet("{id}")]
-    [Authorize]
-    public IActionResult GetUserChangeRequestById(int id)
+    public async Task<IActionResult> GetUserChangeRequestById(int id)
     {
-        var userChangeRequest = _userChangeRequestService.GetUserChangeRequestById(id);
+        var userChangeRequest = await _userChangeRequestService.GetUserChangeRequestByIdAsync(id);
         if (userChangeRequest == null)
         {
-            return NotFound();
+            return NotFound(_localizer["UserChangeRequestNotFound", id].Value);
         }
         var userChangeRequestDto = _userChangeRequestMapper.MapToDto(userChangeRequest);
         return Ok(userChangeRequestDto);
     }
 
     [HttpPost]
-    [Authorize]
-    public IActionResult AddUserChangeRequest(UserChangeRequestDto userChangeRequestDto)
+    public async Task<IActionResult> AddUserChangeRequest([FromBody] UserChangeRequestDto userChangeRequestDto)
     {
+        if (userChangeRequestDto == null)
+        {
+            return BadRequest(_localizer["InvalidData"].Value);
+        }
         var userChangeRequest = _userChangeRequestMapper.MapToEntity(userChangeRequestDto);
-        _userChangeRequestService.AddUserChangeRequest(userChangeRequest);
-        return CreatedAtAction(nameof(GetUserChangeRequestById), new { id = userChangeRequest.UserChangeRequestId }, userChangeRequestDto);
+        var createdRequest = await _userChangeRequestService.AddUserChangeRequestAsync(userChangeRequest);
+        var createdDto = _userChangeRequestMapper.MapToDto(createdRequest);
+        return CreatedAtAction(nameof(GetUserChangeRequestById), new { id = createdRequest.UserChangeRequestId }, createdDto);
     }
 
     [HttpPut("{id}")]
-    [Authorize]
-    public IActionResult UpdateUserChangeRequest(int id, UserChangeRequestDto updatedUserChangeRequestDto)
+    public async Task<IActionResult> UpdateUserChangeRequest(int id, [FromBody] UserChangeRequestDto updatedUserChangeRequestDto)
     {
         var updatedUserChangeRequest = _userChangeRequestMapper.MapToEntity(updatedUserChangeRequestDto);
-        _userChangeRequestService.UpdateUserChangeRequest(id, updatedUserChangeRequest);
+        await _userChangeRequestService.UpdateUserChangeRequestAsync(id, updatedUserChangeRequest);
         return NoContent();
     }
 
     [HttpDelete("{id}")]
-    [Authorize]
-    public IActionResult DeleteUserChangeRequest(int id)
+    public async Task<IActionResult> DeleteUserChangeRequest(int id)
     {
-        _userChangeRequestService.DeleteUserChangeRequest(id);
+        await _userChangeRequestService.DeleteUserChangeRequestAsync(id);
         return NoContent();
     }
 }

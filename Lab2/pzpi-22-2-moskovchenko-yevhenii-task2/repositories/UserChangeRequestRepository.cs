@@ -2,12 +2,14 @@
 
 public interface IUserChangeRequestRepository
 {
-    void Add(UserChangeRequest userChangeRequest);
-    IEnumerable<UserChangeRequest> GetAll();
-    UserChangeRequest GetById(int userChangeRequestId);
-    void Update(UserChangeRequest userChangeRequest);
-    void Delete(int userChangeRequestId);
+    Task<UserChangeRequest> AddAsync(UserChangeRequest userChangeRequest);
+    Task<IEnumerable<UserChangeRequest>> GetAllAsync();
+    Task<UserChangeRequest> GetByIdAsync(int userChangeRequestId);
+    Task UpdateAsync(UserChangeRequest userChangeRequest);
+    Task DeleteAsync(int userChangeRequestId);
 }
+
+
 
 public class UserChangeRequestRepository : IUserChangeRequestRepository
 {
@@ -18,41 +20,42 @@ public class UserChangeRequestRepository : IUserChangeRequestRepository
         _context = context;
     }
 
-    public void Add(UserChangeRequest userChangeRequest)
+    public async Task<UserChangeRequest> AddAsync(UserChangeRequest userChangeRequest)
     {
-        _context.UserChangeRequests.Add(userChangeRequest);
-        _context.SaveChanges();
+        await _context.UserChangeRequests.AddAsync(userChangeRequest);
+        await _context.SaveChangesAsync();
+        return userChangeRequest;
     }
 
-    public IEnumerable<UserChangeRequest> GetAll()
+    public async Task<IEnumerable<UserChangeRequest>> GetAllAsync()
     {
-        return _context.UserChangeRequests
+        return await _context.UserChangeRequests
             .Include(ucr => ucr.User)
             .Include(ucr => ucr.ChangeRequest)
-            .ToList();
+            .ToListAsync();
     }
 
-    public UserChangeRequest GetById(int userChangeRequestId)
+    public async Task<UserChangeRequest> GetByIdAsync(int userChangeRequestId)
     {
-        return _context.UserChangeRequests
+        return await _context.UserChangeRequests
             .Include(ucr => ucr.User)
             .Include(ucr => ucr.ChangeRequest)
-            .FirstOrDefault(ucr => ucr.UserChangeRequestId == userChangeRequestId);
+            .FirstOrDefaultAsync(ucr => ucr.UserChangeRequestId == userChangeRequestId);
     }
 
-    public void Update(UserChangeRequest userChangeRequest)
+    public async Task UpdateAsync(UserChangeRequest userChangeRequest)
     {
         _context.UserChangeRequests.Update(userChangeRequest);
-        _context.SaveChanges();
+        await _context.SaveChangesAsync();
     }
 
-    public void Delete(int userChangeRequestId)
+    public async Task DeleteAsync(int userChangeRequestId)
     {
-        var userChangeRequest = _context.UserChangeRequests.Find(userChangeRequestId);
+        var userChangeRequest = await _context.UserChangeRequests.FindAsync(userChangeRequestId);
         if (userChangeRequest != null)
         {
             _context.UserChangeRequests.Remove(userChangeRequest);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
         }
     }
 }

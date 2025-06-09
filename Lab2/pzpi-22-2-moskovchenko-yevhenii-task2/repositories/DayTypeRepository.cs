@@ -1,11 +1,16 @@
-﻿public interface IDayTypeRepository
+﻿using Microsoft.EntityFrameworkCore;
+
+public interface IDayTypeRepository
 {
-    void Add(DayType dayType);
-    IEnumerable<DayType> GetAll();
-    DayType GetById(int dayTypeId);
-    void Update(DayType dayType);
-    void Delete(int dayTypeId);
+    Task<DayType> AddAsync(DayType dayType);
+    Task<IEnumerable<DayType>> GetAllAsync();
+    Task<DayType> GetByIdAsync(int dayTypeId);
+    Task UpdateAsync(DayType dayType);
+    Task DeleteAsync(int dayTypeId);
 }
+
+
+
 
 public class DayTypeRepository : IDayTypeRepository
 {
@@ -16,35 +21,36 @@ public class DayTypeRepository : IDayTypeRepository
         _context = context;
     }
 
-    public void Add(DayType dayType)
+    public async Task<DayType> AddAsync(DayType dayType)
     {
-        _context.DayTypes.Add(dayType);
-        _context.SaveChanges();
+        await _context.DayTypes.AddAsync(dayType);
+        await _context.SaveChangesAsync();
+        return dayType;
     }
 
-    public IEnumerable<DayType> GetAll()
+    public async Task<IEnumerable<DayType>> GetAllAsync()
     {
-        return _context.DayTypes.ToList();
+        return await _context.DayTypes.ToListAsync();
     }
 
-    public DayType GetById(int dayTypeId)
+    public async Task<DayType> GetByIdAsync(int dayTypeId)
     {
-        return _context.DayTypes.Find(dayTypeId);
+        return await _context.DayTypes.FindAsync(dayTypeId);
     }
 
-    public void Update(DayType dayType)
+    public async Task UpdateAsync(DayType dayType)
     {
         _context.DayTypes.Update(dayType);
-        _context.SaveChanges();
+        await _context.SaveChangesAsync();
     }
 
-    public void Delete(int dayTypeId)
+    public async Task DeleteAsync(int dayTypeId)
     {
-        var dayType = _context.DayTypes.Find(dayTypeId);
+        var dayType = await _context.DayTypes.FindAsync(dayTypeId);
         if (dayType != null)
         {
             _context.DayTypes.Remove(dayType);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
         }
     }
 }

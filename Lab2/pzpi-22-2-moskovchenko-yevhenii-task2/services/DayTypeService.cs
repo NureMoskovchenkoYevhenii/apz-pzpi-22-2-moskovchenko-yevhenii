@@ -1,39 +1,43 @@
-﻿public class DayTypeService
+﻿using Microsoft.Extensions.Localization;
+
+public class DayTypeService
 {
     private readonly IDayTypeRepository _dayTypeRepository;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
-    public DayTypeService(IDayTypeRepository dayTypeRepository)
+    public DayTypeService(IDayTypeRepository dayTypeRepository, IStringLocalizer<SharedResources> localizer)
     {
         _dayTypeRepository = dayTypeRepository;
+        _localizer = localizer;
     }
 
-    public void AddDayType(DayType dayType)
+    public async Task<DayType> AddDayTypeAsync(DayType dayType)
     {
-        _dayTypeRepository.Add(dayType);
+        return await _dayTypeRepository.AddAsync(dayType);
     }
 
-    public IEnumerable<DayType> GetAllDayTypes()
+    public async Task<IEnumerable<DayType>> GetAllDayTypesAsync()
     {
-        return _dayTypeRepository.GetAll();
+        return await _dayTypeRepository.GetAllAsync();
     }
 
-    public DayType GetDayTypeById(int dayTypeId)
+    public async Task<DayType> GetDayTypeByIdAsync(int dayTypeId)
     {
-        return _dayTypeRepository.GetById(dayTypeId);
+        return await _dayTypeRepository.GetByIdAsync(dayTypeId);
     }
 
-    public void UpdateDayType(int dayTypeId, DayType updatedDayType)
+    public async Task UpdateDayTypeAsync(int dayTypeId, DayType updatedDayType)
     {
-        var dayType = _dayTypeRepository.GetById(dayTypeId);
+        var dayType = await _dayTypeRepository.GetByIdAsync(dayTypeId);
         if (dayType != null)
         {
             dayType.DayTypeName = updatedDayType.DayTypeName;
-            _dayTypeRepository.Update(dayType);
+            await _dayTypeRepository.UpdateAsync(dayType);
         }
     }
 
-    public void DeleteDayType(int dayTypeId)
+    public async Task DeleteDayTypeAsync(int dayTypeId)
     {
-        _dayTypeRepository.Delete(dayTypeId);
+        await _dayTypeRepository.DeleteAsync(dayTypeId);
     }
 }
