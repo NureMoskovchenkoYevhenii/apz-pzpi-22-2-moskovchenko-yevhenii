@@ -1,0 +1,463 @@
+﻿МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ
+ХАРКІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ РАДІОЕЛЕКТРОНІКИ
+
+
+
+
+
+
+
+
+Звіт
+з лабораторної роботи №2
+з дисципліни «Архітектура програмного забезпечення»
+на тему: «РОЗРОБКА ПРОГРАМНОЇ АРХІТЕКТУРИ, СТВОРЕННЯ ТА ВІДЛАГОДЖЕННЯ ПРОГРАМНОГО КОДУ СЕРВЕРНОЇ ЧАСТИНИ ПРОГРАМНОЇ СИСТЕМИ»
+
+
+
+
+
+
+
+
+Виконав:
+ студент групи ПЗПІ-22-2
+Московченко Євгеній Олексійович
+Перевірив:
+ст. викладач кафедри ПІ
+Сокорчук Ігор Петрович
+
+
+
+
+
+
+Харків 2025
+АНАЛІЗ ЗАВДАННЯ
+Загальна архітектура системи побудована за багатошаровим та мікросервісним підходом, включаючи серверну частину, базу даних, IoT-пристрої, веб-клієнт та мобільний застосунок. Серверна частина використовує "Чисту архітектуру" з чітким розділенням на шари: Domain, Application, Infrastructure та API. База даних реалізована в PostgreSQL. Для взаємодії використовується RESTful API з методами HTTP для CRUD-операцій та форматом даних JSON. Автентифікація здійснюється через Basic Authentication. Серверна частина реалізована на C# з використанням .NET 8, ASP.NET Core 8, Entity Framework Core 8 та інших технологій. Інтернаціоналізація реалізована за допомогою ресурсних файлів та middleware. Серверна частина структурована за принципами "Чистої архітектури" з контролерами, маперами, сервісами та репозиторіями. Функціональне тестування включало перевірку API через Swagger UI, тестування бізнес-логіки, локалізації та взаємодії з базою даних.
+________________
+
+
+МЕТА
+Метою лабораторної роботи є проектування, розробка серверної частини. Імплементацію ключових функцій, резервним копіюванням та локалізацією відповідей API.
+
+
+ХІД РОБОТИ 
+Для візуалізації архітектури були створені UML діаграми:
+* Діаграма розгортання (Deployment Diagram).
+* ER-модель даних (Entity–Relationship Model).
+* Діаграма прецедентів (Use Case Diagram).
+* Діаграма пакетів (Package Diagram).
+Було налаштовано контейнеризоване середовище за допомогою Docker та Docker Compose, що вирішено проблеми з залежностями та забезпечено портативність і відтворюваність розгортання. 
+Були реалізовані CRUD-операції та бізнес-логіка для всіх основних сутностей системи. Всі методи доступу до даних та бізнес-логіки були переписані на асинхронні для підвищення продуктивності та стабільності застосунку. Виправлено початкову "хардкодну" автентифікацію. Нова реалізація використовує Basic Authentication, але перевіряє облікові дані за даними, що зберігаються в базі даних. Для безпечного зберігання паролів було імплементовано хешування за допомогою бібліотеки BCrypt.Net. Доступ до API-ендпоінтів було обмежено на основі ролей користувачів.
+Була реалізована функція створення реальних резервних копій бази даних PostgreSQL, яка ініціюється через API-ендпоінт. Також додано ендпоінти для перегляду списку бекапів та їх відновлення.
+Була впроваджена підтримка локалізації для відповідей API. Створено ресурсні файли для української та англійської мов. Система тепер може повертати локалізовані повідомлення про помилки та успішні операції залежно від HTTP-заголовка Accept-Language у запиті клієнта.
+
+
+ВИСНОВКИ
+У результаті виконання лабораторної роботи №2 було успішно спроектовано, розроблено та розгорнуто в контейнеризованому середовищі повноцінну серверну частину для програмної системи "StaffFlow".
+________________
+
+
+ДОДАТОК А
+Відео на Youtube
+________________
+
+
+ДОДАТОК Б
+Графічні матеріали
+
+
+  
+
+Рисунок Б.1 — ER-діаграма даних
+
+
+  
+
+Рисунок Б.2 — UML Діаграма розгортання
+
+
+  
+
+Рисунок Б.3 — UML Діаграма прецедентів
+  
+
+Рисунок Б.4 — Діаграма пакетів
+________________
+ДОДАТОК В
+Фрагменти коду серверу
+
+
+1. using Microsoft.AspNetCore.Mvc;
+2. using Microsoft.AspNetCore.Authorization;
+3. using System.Threading.Tasks;
+4. using Microsoft.Extensions.Localization; 
+5. 
+6. [ApiController]
+7. [Route("api/[controller]")]
+8. [Authorize(Roles = "Admin")] // Тільки адміністратор може робити бекапи
+9. public class BackupController : ControllerBase
+10. {
+11.     private readonly BackupService _backupService;
+12.     private readonly IStringLocalizer<SharedResources> _localizer; // 1. Оголошуємо поле
+13. 
+14.     public BackupController(
+15.         BackupService backupService,
+16.         IStringLocalizer<SharedResources> localizer) // Впроваджуємо залежність
+17.     {
+18.         _backupService = backupService;
+19.         _localizer = localizer; // 2. Ініціалізуємо поле в конструкторі
+20.     }
+21. 
+22.     [HttpPost("create")]
+23.     public async Task<IActionResult> CreateBackup()
+24.     {
+25.         var (success, backupFileName) = await _backupService.CreateBackupAsync();
+26.         if (success)
+27.         {
+28.             // Тепер _localizer існує і може бути використаний
+29.             return Ok(new { Message = _localizer["BackupCreated"].Value, BackupFile = backupFileName });
+30.         }
+31.         else
+32.         {
+33.             return StatusCode(500, new { Error = backupFileName });
+34.         }
+35.     }
+36. 
+37.     [HttpGet("list")]
+38.     public IActionResult ListBackups()
+39.     {
+40.         var backups = _backupService.GetAvailableBackups();
+41.         return Ok(backups);
+42.     }
+43. 
+44. 
+45.     // POST /api/Backup/restore
+46.     [HttpPost("restore")]
+47.     public async Task<IActionResult> RestoreBackup([FromQuery] string fileName)
+48.     {
+49.         if (string.IsNullOrEmpty(fileName))
+50.         {
+51.             return BadRequest("Backup file name must be provided.");
+52.         }
+53. 
+54.         var (success, message) = await _backupService.RestoreBackupAsync(fileName);
+55.         if (success)
+56.         {
+57.             return Ok(new { Message = message });
+58.         }
+59.         else
+60.         {
+61.             // Повертаємо помилку сервера, якщо відновлення не вдалося
+62.             return StatusCode(500, new { Error = message });
+63.         }
+64.     }
+65. }
+
+
+1. <?xml version="1.0" encoding="utf-8"?>
+2. <root>
+3.   <!-- 
+4.     Microsoft ResX Schema 
+5.     
+6.     Version 2.0
+7.     
+8.     The primary goals of this format is to allow a simple XML format 
+9.     that is mostly human readable. The generation and parsing of the 
+10.     various data types are done through the TypeConverter classes 
+11.     associated with the data types.
+12.     
+13.     Example:
+14.     
+15.     ... ado.net/XML headers & schema ...
+16.     <resheader name="resmimetype">text/microsoft-resx</resheader>
+17.     <resheader name="version">2.0</resheader>
+18.     <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+19.     <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+20.     <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+21.     <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+22.     <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+23.         <value>[base64 mime encoded serialized .NET Framework object]</value>
+24.     </data>
+25.     <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.binary.base64">
+26.         <value>[base64 mime encoded serialized .NET Framework object]</value>
+27.     </data>
+28.     
+29.     ...
+30.   -->
+31.   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+32.     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+33.     <xsd:element name="root" msdata:IsDataSet="true">
+34.       <xsd:complexType>
+35.         <xsd:choice maxOccurs="unbounded">
+36.           <xsd:element name="data">
+37.             <xsd:complexType>
+38.               <xsd:sequence>
+39.                 <xsd:element name="value" type="xsd:string" minOccurs="0" />
+40.                 <xsd:element name="comment" type="xsd:string" minOccurs="0" />
+41.               </xsd:sequence>
+42.               <xsd:attribute name="name" type="xsd:string" use="required" />
+43.               <xsd:attribute name="type" type="xsd:string" />
+44.               <xsd:attribute name="mimetype" type="xsd:string" />
+45.               <xsd:attribute ref="xml:space" />
+46.             </xsd:complexType>
+47.           </xsd:element>
+48.           <xsd:element name="resheader">
+49.             <xsd:complexType>
+50.               <xsd:sequence>
+51.                 <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+52.               </xsd:sequence>
+53.               <xsd:attribute name="name" type="xsd:string" use="required" />
+54.             </xsd:complexType>
+55.           </xsd:element>
+56.         </xsd:choice>
+57.       </xsd:complexType>
+58.     </xsd:element>
+59.   </xsd:schema>
+60.   <resheader name="resmimetype">
+61.     <value>text/microsoft-resx</value>
+62.   </resheader>
+63.   <resheader name="version">
+64.     <value>2.0</value>
+65.   </resheader>
+66.   <resheader name="reader">
+67.     <value>System.Resources.ResXResourceReader, System.Windows.Forms, ...</value>
+68.   </resheader>
+69.   <resheader name="writer">
+70.     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, ...</value>
+71.   </resheader>
+72.   
+73.   <!-- Ваші рядки тут -->
+74.   <data name="UserNotFound" xml:space="preserve">
+75.     <value>Користувача не знайдено.</value>
+76.   </data>
+77.   <data name="BackupCreated" xml:space="preserve">
+78.     <value>Резервну копію успішно створено.</value>
+79.   </data>
+80.     <!-- ... існуючі рядки ... -->
+81.   <data name="SensorDataNotFound" xml:space="preserve">
+82.     <value>Дані сенсора з ID {0} не знайдено.</value>
+83.   </data>
+84.   <data name="InvalidData" xml:space="preserve">
+85.     <value>Надано недійсні дані.</value>
+86.   </data>
+87.   <data name="ChangeRequestNotFound" xml:space="preserve">
+88.     <value>Запит на зміну з ID {0} не знайдено.</value>
+89.   </data>
+90.   <data name="DayTypeNotFound" xml:space="preserve">
+91.     <value>Тип дня з ID {0} не знайдено.</value>
+92.   </data>
+93.   <data name="UserChangeRequestNotFound" xml:space="preserve">
+94.     <value>Запит на зміну користувача з ID {0} не знайдено.</value>
+95.   </data>
+96.   <data name="UserWorkingDayNotFound" xml:space="preserve">
+97.     <value>Запис про робочий день користувача з ID {0} не знайдено.</value>
+98.   </data>
+99.   <data name="WorkingDayNotFound" xml:space="preserve">
+100.     <value>Робочий день з ID {0} не знайдено.</value>
+101.   </data>
+102. </root>
+
+
+1. using Microsoft.AspNetCore.Authentication;
+2. using Microsoft.Extensions.Options;
+3. using System.Net.Http.Headers;
+4. using System.Security.Claims;
+5. using System.Text.Encodings.Web;
+6. using System.Text;
+7. 
+8. public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+9. {
+10.     private readonly IServiceScopeFactory _scopeFactory;
+11. 
+12.     public BasicAuthenticationHandler(
+13.         IOptionsMonitor<AuthenticationSchemeOptions> options,
+14.         ILoggerFactory logger,
+15.         UrlEncoder encoder,
+16.         ISystemClock clock,
+17.         IServiceScopeFactory scopeFactory) // Впроваджуємо IServiceScopeFactory
+18.         : base(options, logger, encoder, clock)
+19.     {
+20.         _scopeFactory = scopeFactory;
+21.     }
+22. 
+23.     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
+24.     {
+25.         if (!Request.Headers.ContainsKey("Authorization"))
+26.         {
+27.             return AuthenticateResult.Fail("Missing Authorization Header");
+28.         }
+29. 
+30.         try
+31.         {
+32.             var authHeader = AuthenticationHeaderValue.Parse(Request.Headers["Authorization"]);
+33.             var credentialBytes = Convert.FromBase64String(authHeader.Parameter);
+34.             var credentials = Encoding.UTF8.GetString(credentialBytes).Split(':');
+35.             var username = credentials[0];
+36.             var password = credentials[1];
+37. 
+38.             // Використовуємо IServiceScopeFactory для отримання UserService
+39.             // Це потрібно, тому що AuthenticationHandler - це синглтон, а UserService - scoped
+40.             using var scope = _scopeFactory.CreateScope();
+41.             var userService = scope.ServiceProvider.GetRequiredService<UserService>();
+42. 
+43.             var user = await userService.Authenticate(username, password);
+44. 
+45.             if (user == null)
+46.             {
+47.                 return AuthenticateResult.Fail("Invalid Username or Password");
+48.             }
+49. 
+50.             // Створюємо ClaimsIdentity з реальними даними користувача з БД
+51.             var claims = new[] {
+52.                 new Claim(ClaimTypes.Name, $"{user.FirstName} {user.LastName}"),
+53.                 new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+54.                 new Claim(ClaimTypes.Role, user.Role)
+55.             };
+56.             var identity = new ClaimsIdentity(claims, Scheme.Name);
+57.             var principal = new ClaimsPrincipal(identity);
+58.             var ticket = new AuthenticationTicket(principal, Scheme.Name);
+59. 
+60.             return AuthenticateResult.Success(ticket);
+61.         }
+62.         catch
+63.         {
+64.             return AuthenticateResult.Fail("Invalid Authorization Header");
+65.         }
+66.     }
+67. }
+
+
+1. using System.Diagnostics;
+2. using System.Threading.Tasks;
+3. using Microsoft.Extensions.Configuration; // Додайте цей using
+4. 
+5. public class BackupService
+6. {
+7.     private readonly IConfiguration _configuration;
+8. 
+9.     private readonly string _backupsDirectory = "/backups"; // Шлях до папки з бекапами всередині контейнера
+10.     public BackupService(IConfiguration configuration)
+11.     {
+12.         _configuration = configuration;
+13.     }
+14. 
+15.     public async Task<(bool Success, string Message)> CreateBackupAsync()
+16.     {
+17.         // Отримуємо облікові дані з конфігурації (з docker-compose.yml)
+18.         var connectionString = _configuration.GetConnectionString("DefaultConnection");
+19. 
+20.         // Простий парсер рядка підключення. Для продакшну краще використовувати спеціальні бібліотеки.
+21.         var settings = connectionString.Split(';')
+22.             .Select(s => s.Split('='))
+23.             .ToDictionary(a => a[0].Trim(), a => a[1].Trim());
+24. 
+25.         var host = settings["Host"];
+26.         var port = settings["Port"];
+27.         var database = settings["Database"];
+28.         var username = settings["Username"];
+29.         var password = settings["Password"];
+30. 
+31.         // Формуємо ім'я файлу для бекапу
+32.         var backupFileName = $"backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.sql";
+33.         var backupFilePath = $"/backups/{backupFileName}";
+34. 
+35.         // --- ОНОВЛЕННЯ: Додаємо опції --clean та --if-exists до pg_dump ---
+36.         var process = new Process
+37.         {
+38.             StartInfo = new ProcessStartInfo
+39.             {
+40.                 FileName = "pg_dump",
+41.                 // Додано --clean та --if-exists
+42.                 Arguments = $"--clean --if-exists -h {host} -p {port} -U {username} -d {database} -f {backupFilePath}",
+43.                 RedirectStandardOutput = true,
+44.                 RedirectStandardError = true,
+45.                 UseShellExecute = false,
+46.                 CreateNoWindow = true,
+47.             }
+48.         };
+49. 
+50.         process.StartInfo.EnvironmentVariables["PGPASSWORD"] = password;
+51. 
+52.         process.Start();
+53.         string error = await process.StandardError.ReadToEndAsync();
+54.         await process.WaitForExitAsync();
+55. 
+56.         if (process.ExitCode == 0)
+57.         {
+58.             return (true, $"Clean backup created successfully: {backupFileName}");
+59.         }
+60.         else
+61.         {
+62.             return (false, $"Error creating backup: {error}");
+63.         }
+64.     }
+65. 
+66.     public IEnumerable<string> GetAvailableBackups()
+67.     {
+68.         if (!Directory.Exists(_backupsDirectory))
+69.         {
+70.             return Enumerable.Empty<string>(); // Повертаємо порожній список, якщо папки немає
+71.         }
+72. 
+73.         return Directory.GetFiles(_backupsDirectory, "*.sql")
+74.                         .Select(Path.GetFileName) // Повертаємо тільки імена файлів
+75.                         .OrderByDescending(f => f); // Сортуємо від нових до старих
+76.     }
+77. 
+78.     // --- НОВИЙ МЕТОД: Відновлення з бекапу ---
+79.     public async Task<(bool Success, string Message)> RestoreBackupAsync(string backupFileName)
+80.     {
+81.         var backupFilePath = Path.Combine(_backupsDirectory, backupFileName);
+82. 
+83.         // Перевіряємо, чи існує файл бекапу
+84.         if (!File.Exists(backupFilePath))
+85.         {
+86.             return (false, $"Backup file not found: {backupFileName}");
+87.         }
+88. 
+89.         // Отримуємо облікові дані з конфігурації
+90.         var connectionString = _configuration.GetConnectionString("DefaultConnection");
+91.         var settings = connectionString.Split(';')
+92.             .Select(s => s.Split('='))
+93.             .ToDictionary(a => a[0].Trim(), a => a[1].Trim());
+94. 
+95.         var host = settings["Host"];
+96.         var port = settings["Port"];
+97.         var database = settings["Database"];
+98.         var username = settings["Username"];
+99.         var password = settings["Password"];
+100. 
+101.         // Формуємо команду psql для відновлення
+102.         var process = new Process
+103.         {
+104.             StartInfo = new ProcessStartInfo
+105.             {
+106.                 FileName = "psql",
+107.                 // Додано --single-transaction (або -1)
+108.                 Arguments = $"--single-transaction -h {host} -U {username} -d {database} -f {backupFilePath}",
+109.                 RedirectStandardOutput = true,
+110.                 RedirectStandardError = true,
+111.                 UseShellExecute = false,
+112.                 CreateNoWindow = true,
+113.             }
+114.         };
+115. 
+116.         process.StartInfo.EnvironmentVariables["PGPASSWORD"] = password;
+117. 
+118.         process.Start();
+119.         string error = await process.StandardError.ReadToEndAsync();
+120.         await process.WaitForExitAsync();
+121. 
+122.         if (process.ExitCode == 0)
+123.         {
+124.             return (true, $"Restore from {backupFileName} completed successfully.");
+125.         }
+126.         else
+127.         {
+128.             return (false, $"Error restoring from backup: {error}");
+129.         }
+130.     }
+131.     
+132. }
